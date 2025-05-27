@@ -409,11 +409,6 @@
                     }
                 });
                 
-                if (lineCount > 0) {
-                    const reward = this.calculateReward(lineCount);
-                    this.money += reward;
-                }
-                
                 return lineCount;
             }
             
@@ -424,6 +419,23 @@
             }
             
             reset() {
+                // リセット時に賞金を獲得
+                const lineCount = this.checkLines();
+                if (lineCount > 0) {
+                    const reward = this.calculateReward(lineCount);
+                    this.money += reward;
+                    
+                    // 賞金獲得の通知
+                    const notification = document.createElement('div');
+                    notification.textContent = `${lineCount}ライン達成！賞金 ${reward.toLocaleString()}円 獲得！`;
+                    notification.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #4CAF50; color: white; padding: 20px; border-radius: 10px; font-size: 18px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 3000);
+                }
+                
                 this.calledNumbers = [];
                 this.currentNumber = null;
                 this.interval = this.baseInterval;
