@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>放置ビンゴゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #e8f4f8;
+            border-radius: 5px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            max-width: 300px;
+            margin: 20px auto;
+            background: #333;
+            padding: 2px;
+            border-radius: 5px;
+        }
+        
+        .bingo-cell {
+            background: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: default;
+        }
+        
+        .bingo-cell.marked {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .bingo-cell.line {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #1976D2;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .current-number {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        
+        .upgrades {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+        
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 3px;
+        }
+        
+        .upgrade-info {
+            flex: 1;
+        }
+        
+        .upgrade-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .upgrade-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        
+        .called-numbers {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .called-numbers h4 {
+            margin-top: 0;
+        }
+        
+        .number-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .called-number {
+            background: #2196F3;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>放置ビンゴゲーム</h1>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div>賞金</div>
+                <div id="money">0</div>
+            </div>
+            <div class="stat-item">
+                <div>ライン数</div>
+                <div id="lines">0</div>
+            </div>
+            <div class="stat-item">
+                <div>次の抽選まで</div>
+                <div id="timer">0</div>
+            </div>
+        </div>
+        
+        <div class="current-number" id="currentNumber">
+            ゲーム開始を待っています...
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="bingo-card" id="bingoCard"></div>
+        
+        <div class="controls">
+            <button class="btn" id="resetBtn">リセット</button>
+            <button class="btn" id="pauseBtn">一時停止</button>
+        </div>
+        
+        <div class="called-numbers">
+            <h4>抽選された数字</h4>
+            <div class="number-list" id="calledNumbers"></div>
+        </div>
+        
+        <div class="upgrades">
+            <h3>アップグレード</h3>
+            <div class="upgrade-item">
+                <div class="upgrade-info">
+                    <div class="upgrade-title">抽選間隔短縮 (レベル <span id="upgrade1Level">0</span>)</div>
+                    <div class="upgrade-desc">抽選間隔の伸びを抑制します</div>
+                </div>
+                <button class="btn" id="upgrade1Btn">購入 (<span id="upgrade1Cost">100</span>)</button>
+            </div>
+            <div class="upgrade-item">
+                <div class="upgrade-info">
+                    <div class="upgrade-title">数字範囲縮小 (レベル <span id="upgrade2Level">0</span>)</div>
+                    <div class="upgrade-desc">数字の上限を下げます (現在: <span id="currentRange">100</span>)</div>
+                </div>
+                <button class="btn" id="upgrade2Btn">購入 (<span id="upgrade2Cost">500</span>)</button>
+            </div>
+            <div class="upgrade-item">
+                <div class="upgrade-info">
+                    <div class="upgrade-title">賞金倍率UP (レベル <span id="upgrade3Level">0</span>)</div>
+                    <div class="upgrade-desc">高ライン時の賞金を増加させます</div>
+                </div>
+                <button class="btn" id="upgrade3Btn">購入 (<span id="upgrade3Cost">1000</span>)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BingoGame {
+            constructor() {
+                this.money = 0;
+                this.bingoCard = [];
+                this.calledNumbers = [];
+                this.currentNumber = null;
+                this.timer = null;
+                this.interval = 5000; // 初期間隔（ミリ秒）
+                this.baseInterval = 5000;
+                this.intervalMultiplier = 1.1;
+                this.timeLeft = 0;
+                this.isPaused = false;
+                
+                // アップグレード
+                this.upgrades = {
+                    intervalReduction: 0,
+                    rangeReduction: 0,
+                    moneyMultiplier: 0
+                };
+                
+                this.init();
+                this.loadGame();
+                this.startTimer();
+                
+                // 自動セーブ（30秒ごと）
+                setInterval(() => this.saveGame(), 30000);
+            }
+            
+            init() {
+                this.generateBingoCard();
+                this.setupEventListeners();
+                this.updateDisplay();
+            }
+            
+            generateBingoCard() {
+                const maxNumber = this.getMaxNumber();
+                const numbers = [];
+                
+                // 1からmaxNumberまでの数字をシャッフル
+                for (let i = 1; i <= maxNumber; i++) {
+                    numbers.push(i);
+                }
+                
+                // Fisher-Yatesシャッフル
+                for (let i = numbers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+                }
+                
+                // 最初の25個を取得
+                this.bingoCard = numbers.slice(0, 25).map(num => ({
+                    number: num,
+                    marked: false,
+                    inLine: false
+                }));
+                
+                this.renderBingoCard();
+            }
+            
+            getMaxNumber() {
+                return Math.max(50, 100 - this.upgrades.rangeReduction * 5);
+            }
+            
+            renderBingoCard() {
+                const cardElement = document.getElementById('bingoCard');
+                cardElement.innerHTML = '';
+                
+                this.bingoCard.forEach(cell => {
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'bingo-cell';
+                    cellElement.textContent = cell.number;
+                    
+                    if (cell.marked) {
+                        cellElement.classList.add('marked');
+                    }
+                    if (cell.inLine) {
+                        cellElement.classList.add('line');
+                    }
+                    
+                    cardElement.appendChild(cellElement);
+                });
+            }
+            
+            startTimer() {
+                if (this.timer) clearInterval(this.timer);
+                
+                this.timeLeft = this.interval;
+                this.timer = setInterval(() => {
+                    if (!this.isPaused) {
+                        this.timeLeft -= 100;
+                        this.updateTimer();
+                        
+                        if (this.timeLeft <= 0) {
+                            this.drawNumber();
+                            this.interval = Math.floor(this.interval * this.getIntervalMultiplier());
+                            this.timeLeft = this.interval;
+                        }
+                    }
+                }, 100);
+            }
+            
+            getIntervalMultiplier() {
+                const reduction = this.upgrades.intervalReduction * 0.01;
+                return Math.max(1.02, this.intervalMultiplier - reduction);
+            }
+            
+            drawNumber() {
+                const maxNumber = this.getMaxNumber();
+                const availableNumbers = [];
+                
+                for (let i = 1; i <= maxNumber; i++) {
+                    if (!this.calledNumbers.includes(i)) {
+                        availableNumbers.push(i);
+                    }
+                }
+                
+                if (availableNumbers.length === 0) {
+                    this.endGame();
+                    return;
+                }
+                
+                const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+                this.currentNumber = availableNumbers[randomIndex];
+                this.calledNumbers.push(this.currentNumber);
+                
+                this.markNumber(this.currentNumber);
+                this.updateDisplay();
+            }
+            
+            markNumber(number) {
+                this.bingoCard.forEach(cell => {
+                    if (cell.number === number) {
+                        cell.marked = true;
+                    }
+                });
+                
+                this.checkLines();
+                this.renderBingoCard();
+            }
+            
+            checkLines() {
+                // 全てのセルのinLineをリセット
+                this.bingoCard.forEach(cell => cell.inLine = false);
+                
+                let lineCount = 0;
+                const lines = [
+                    // 横のライン
+                    [0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24],
+                    // 縦のライン
+                    [0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24],
+                    // 斜めのライン
+                    [0, 6, 12, 18, 24], [4, 8, 12, 16, 20]
+                ];
+                
+                lines.forEach(line => {
+                    const isComplete = line.every(index => this.bingoCard[index].marked);
+                    if (isComplete) {
+                        lineCount++;
+                        line.forEach(index => {
+                            this.bingoCard[index].inLine = true;
+                        });
+                    }
+                });
+                
+                if (lineCount > 0) {
+                    const reward = this.calculateReward(lineCount);
+                    this.money += reward;
+                }
+                
+                return lineCount;
+            }
+            
+            calculateReward(lineCount) {
+                const baseReward = [0, 100, 300, 700, 1500, 3000, 6000, 10000, 15000, 25000, 40000, 60000, 100000];
+                const multiplier = 1 + (this.upgrades.moneyMultiplier * 0.5);
+                return Math.floor((baseReward[lineCount] || 100000) * multiplier);
+            }
+            
+            reset() {
+                this.calledNumbers = [];
+                this.currentNumber = null;
+                this.interval = this.baseInterval;
+                this.timeLeft = this.interval;
+                this.generateBingoCard();
+                this.updateDisplay();
+                this.startTimer();
+            }
+            
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                document.getElementById('pauseBtn').textContent = this.isPaused ? '再開' : '一時停止';
+            }
+            
+            purchaseUpgrade(type) {
+                const costs = this.getUpgradeCosts();
+                const cost = costs[type];
+                
+                if (this.money >= cost) {
+                    this.money -= cost;
+                    this.upgrades[type]++;
+                    this.updateDisplay();
+                    this.saveGame();
+                }
+            }
+            
+            getUpgradeCosts() {
+                return {
+                    intervalReduction: Math.floor(100 * Math.pow(2, this.upgrades.intervalReduction)),
+                    rangeReduction: Math.floor(500 * Math.pow(3, this.upgrades.rangeReduction)),
+                    moneyMultiplier: Math.floor(1000 * Math.pow(4, this.upgrades.moneyMultiplier))
+                };
+            }
+            
+            updateDisplay() {
+                document.getElementById('money').textContent = this.money.toLocaleString();
+                document.getElementById('lines').textContent = this.checkLines();
+                document.getElementById('currentNumber').textContent = this.currentNumber ? 
+                    `最後に抽選された数字: ${this.currentNumber}` : 'ゲーム開始を待っています...';
+                
+                // 抽選された数字の表示
+                const calledNumbersElement = document.getElementById('calledNumbers');
+                calledNumbersElement.innerHTML = '';
+                this.calledNumbers.forEach(num => {
+                    const span = document.createElement('span');
+                    span.className = 'called-number';
+                    span.textContent = num;
+                    calledNumbersElement.appendChild(span);
+                });
+                
+                // アップグレード情報の更新
+                const costs = this.getUpgradeCosts();
+                
+                document.getElementById('upgrade1Level').textContent = this.upgrades.intervalReduction;
+                document.getElementById('upgrade1Cost').textContent = costs.intervalReduction.toLocaleString();
+                document.getElementById('upgrade1Btn').disabled = this.money < costs.intervalReduction;
+                
+                document.getElementById('upgrade2Level').textContent = this.upgrades.rangeReduction;
+                document.getElementById('upgrade2Cost').textContent = costs.rangeReduction.toLocaleString();
+                document.getElementById('upgrade2Btn').disabled = this.money < costs.rangeReduction;
+                document.getElementById('currentRange').textContent = this.getMaxNumber();
+                
+                document.getElementById('upgrade3Level').textContent = this.upgrades.moneyMultiplier;
+                document.getElementById('upgrade3Cost').textContent = costs.moneyMultiplier.toLocaleString();
+                document.getElementById('upgrade3Btn').disabled = this.money < costs.moneyMultiplier;
+            }
+            
+            updateTimer() {
+                const seconds = Math.ceil(this.timeLeft / 1000);
+                document.getElementById('timer').textContent = `${seconds}秒`;
+                
+                const progress = (this.interval - this.timeLeft) / this.interval * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+            }
+            
+            setupEventListeners() {
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
+                
+                document.getElementById('upgrade1Btn').addEventListener('click', () => 
+                    this.purchaseUpgrade('intervalReduction'));
+                document.getElementById('upgrade2Btn').addEventListener('click', () => 
+                    this.purchaseUpgrade('rangeReduction'));
+                document.getElementById('upgrade3Btn').addEventListener('click', () => 
+                    this.purchaseUpgrade('moneyMultiplier'));
+            }
+            
+            saveGame() {
+                const saveData = {
+                    money: this.money,
+                    upgrades: this.upgrades,
+                    calledNumbers: this.calledNumbers,
+                    bingoCard: this.bingoCard,
+                    currentNumber: this.currentNumber,
+                    interval: this.interval,
+                    timeLeft: this.timeLeft
+                };
+                
+                // メモリ内でのみ保存（LocalStorageは使用しない）
+                this.savedData = saveData;
+            }
+            
+            loadGame() {
+                // セーブデータがあれば読み込む
+                if (this.savedData) {
+                    const data = this.savedData;
+                    this.money = data.money || 0;
+                    this.upgrades = data.upgrades || { intervalReduction: 0, rangeReduction: 0, moneyMultiplier: 0 };
+                    this.calledNumbers = data.calledNumbers || [];
+                    this.bingoCard = data.bingoCard || [];
+                    this.currentNumber = data.currentNumber || null;
+                    this.interval = data.interval || this.baseInterval;
+                    this.timeLeft = data.timeLeft || this.interval;
+                    
+                    if (this.bingoCard.length === 0) {
+                        this.generateBingoCard();
+                    } else {
+                        this.renderBingoCard();
+                    }
+                }
+            }
+            
+            endGame() {
+                alert('全ての数字が抽選されました！リセットして新しいゲームを始めてください。');
+                clearInterval(this.timer);
+            }
+        }
+        
+        // ゲーム開始
+        const game = new BingoGame();
+    </script>
+</body>
+</html>
